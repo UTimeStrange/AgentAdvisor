@@ -1,0 +1,111 @@
+# ============================================================
+# Agent Advisor - 多智能体投顾系统配置
+# ============================================================
+
+# 服务器配置
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+# 大模型配置
+llm:
+  # 当前使用的 provider: openai / deepseek / claude
+  default_provider: "openai"
+
+  providers:
+    openai:
+      model: "gpt-4o"
+      api_url: "https://api.openai.com/v1/chat/completions"
+      # api_key 从环境变量 OPENAI_API_KEY 读取
+      temperature: 0.3
+      max_tokens: 8192
+
+    deepseek:
+      model: "deepseek-chat"
+      api_url: "https://api.deepseek.com/v1/chat/completions"
+      # api_key 从环境变量 DEEPSEEK_API_KEY 读取
+      temperature: 0.3
+      max_tokens: 8192
+
+    claude:
+      model: "claude-sonnet-4-20250514"
+      api_url: "https://api.anthropic.com/v1/messages"
+      # api_key 从环境变量 ANTHROPIC_API_KEY 读取
+      temperature: 0.3
+      max_tokens: 8192
+
+# 邮件推送配置
+email:
+  smtp_host: "smtp.qq.com"
+  smtp_port: 465
+  sender: ""
+  # password 从环境变量 EMAIL_PASSWORD 读取
+  receivers: []
+
+# 定时任务配置
+scheduler:
+  # 每日监控时间 (24小时制)
+  monitor_hour: 18
+  monitor_minute: 0
+
+# 数据配置
+data:
+  cache_dir: "data"
+  # 横截面数据缓存过期天数
+  cross_section_expire_days: 1
+  # 时序数据缓存过期天数
+  time_series_expire_days: 1
+
+# ETF 标的池
+etf_pool:
+  # 国内宽基指数
+  broad_base:
+    - { code: "510300", name: "沪深300ETF", index_code: "000300" }
+    - { code: "510500", name: "中证500ETF", index_code: "000905" }
+    - { code: "512100", name: "中证1000ETF", index_code: "000852" }
+    - { code: "588000", name: "科创50ETF", index_code: "000688" }
+    - { code: "159901", name: "深证100ETF", index_code: "399330" }
+    - { code: "510050", name: "上证50ETF", index_code: "000016" }
+    - { code: "159915", name: "创业板ETF", index_code: "399006" }
+
+  # 行业/主题指数
+  sector:
+    - { code: "512010", name: "医药ETF", index_code: "000933" }
+    - { code: "512690", name: "白酒ETF", index_code: "399997" }
+    - { code: "515790", name: "光伏ETF", index_code: "931151" }
+    - { code: "512480", name: "半导体ETF", index_code: "990001" }
+    - { code: "512880", name: "证券ETF", index_code: "399975" }
+    - { code: "515030", name: "新能源车ETF", index_code: "399976" }
+    - { code: "512800", name: "银行ETF", index_code: "399986" }
+    - { code: "512200", name: "房地产ETF", index_code: "399393" }
+    - { code: "515180", name: "红利ETF", index_code: "000922" }
+    - { code: "512660", name: "军工ETF", index_code: "399967" }
+    - { code: "159869", name: "游戏ETF", index_code: "930901" }
+    - { code: "512170", name: "医疗ETF", index_code: "399989" }
+    - { code: "516510", name: "云计算ETF", index_code: "930851" }
+    - { code: "159766", name: "旅游ETF", index_code: "930633" }
+    - { code: "562500", name: "机器人ETF", index_code: "931590" }
+
+  # QDII 跨境
+  qdii:
+    - { code: "513100", name: "纳指100ETF", index_code: "NDX" }
+    - { code: "513500", name: "标普500ETF", index_code: "SPX" }
+    - { code: "513130", name: "恒生科技ETF", index_code: "HSTECH" }
+    - { code: "513660", name: "恒生指数ETF", index_code: "HSI" }
+
+  # 债券
+  bond:
+    - { code: "511260", name: "十年国债ETF", index_code: "" }
+    - { code: "511010", name: "国债ETF", index_code: "" }
+    - { code: "511020", name: "活跃国债ETF", index_code: "" }
+    - { code: "511030", name: "公司债ETF", index_code: "" }
+
+  # 黄金
+  gold:
+    - { code: "518880", name: "黄金ETF", index_code: "" }
+    - { code: "159934", name: "黄金ETF基金", index_code: "" }
+
+  # 货币基金
+  money:
+    - { code: "511880", name: "银华日利", index_code: "" }
+    - { code: "511990", name: "华宝添益", index_code: "" }

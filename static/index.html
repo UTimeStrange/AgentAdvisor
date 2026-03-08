@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Advisor - AI多智能体投顾系统</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --gold: #C9A84C;
+  --gold-dark: #A07C30;
+  --gold-light: #D4B86A;
+  --gold-glow: rgba(201, 168, 76, 0.15);
+  --bg-deepest: #0A0A0A;
+  --bg-deep: #0D0D0D;
+  --bg-dark: #111111;
+  --bg-card: #141414;
+  --bg-elevated: #1A1A1A;
+  --bg-input: #1E1E1E;
+  --text-primary: #E8E8E8;
+  --text-secondary: #999999;
+  --text-muted: #666666;
+  --border: rgba(201, 168, 76, 0.12);
+  --border-hover: rgba(201, 168, 76, 0.3);
+  --green: #4CAF50;
+  --red: #F44336;
+  --orange: #FF9800;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-width: 260px;
+}
+
+html, body { 
+  height: 100%; 
+  font-family: var(--font); 
+  background: var(--bg-deepest); 
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+/* ============ LAYOUT ============ */
+.app { display: flex; height: 100vh; }
+
+/* ============ SIDEBAR ============ */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--bg-deep);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+  transition: var(--transition);
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.new-chat-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--border-hover);
+  color: var(--text-primary);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  transition: var(--transition);
+  font-family: var(--font);
+}
+.new-chat-btn:hover { background: var(--gold-glow); border-color: var(--gold); color: var(--gold); }
+.new-chat-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+.sidebar-list {
+  flex: 1; overflow-y: auto; padding: 8px;
+}
+.sidebar-list::-webkit-scrollbar { width: 3px; }
+.sidebar-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.chat-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: var(--transition);
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex; align-items: center; gap: 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chat-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+.chat-item.active { background: var(--gold-glow); color: var(--gold); border: 1px solid var(--border-hover); }
+.chat-item .dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--gold-dark);
+}
+.chat-item.active .dot { background: var(--gold); }
+
+.sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.model-select {
+  flex: 1;
+  background: var(--bg-elevated); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 10px; font-size: 12px; font-family: var(--font);
+  cursor: pointer; outline: none;
+}
+.model-select:focus { border-color: var(--gold); }
+
+/* ============ MAIN CHAT ============ */
+.chat-main {
+  flex: 1; display: flex; flex-direction: column;
+  background: var(--bg-dark);
+  min-width: 0;
+}
+
+.chat-header {
+  height: 52px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+.chat-header-title {
+  font-size: 15px; font-weight: 600; color: var(--gold);
+}
+.chat-header-right { display: flex; align-items: center; gap: 12px; }
+.header-btn {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-secondary); border-radius: 6px;
+  padding: 5px 12px; font-size: 12px; cursor: pointer;
+  transition: var(--transition); font-family: var(--font);
+}
+.header-btn:hover { border-color: var(--gold); color: var(--gold); }
+.status-badge {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text-muted);
+}
+.status-badge .dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+}
+.status-badge .dot.active { animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.3; } }
+
+/* Chat Messages */
+.chat-messages {
+  flex: 1; overflow-y: auto;
+  padding: 0;
+  scroll-behavior: smooth;
+}
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-track { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.msg { padding: 24px 0; animation: msgIn 0.35s ease; }
+.msg:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.03); }
+@keyframes msgIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+.msg-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 32px;
+  display: flex; gap: 16px; align-items: flex-start;
+}
+
+.msg-user { background: transparent; }
+.msg-ai { background: rgba(201,168,76,0.02); }
+
+.msg .avatar {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600;
+  flex-shrink: 0; margin-top: 2px;
+}
+.msg-ai .avatar {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: var(--bg-deep);
+}
+.msg-user .avatar {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.msg .content { flex: 1; min-width: 0; line-height: 1.7; }
+.msg-user .content { color: var(--text-primary); }
+
+/* Quick Options */
+.quick-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.quick-btn {
+  background: transparent;
+  border: 1px solid var(--border-hover);
+  color: var(--gold);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font);
+}
+.quick-btn:hover {
+  background: var(--gold-glow);
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+
+/* Thinking Block */
+.thinking-block {
+  background: rgba(201,168,76,0.04);
+  border-left: 2px solid var(--gold-dark);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-height: 180px;
+  overflow-y: auto;
+  transition: max-height 0.3s ease;
+}
+.thinking-block::-webkit-scrollbar { width: 3px; }
+.thinking-block::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.thinking-header {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--gold-dark); font-weight: 500;
+  margin-bottom: 4px; cursor: pointer; user-select: none;
+}
+.thinking-header .arrow { transition: transform 0.2s; font-size: 10px; }
+.thinking-header .arrow.collapsed { transform: rotate(-90deg); }
+.thinking-block.collapsed { max-height: 26px; overflow: hidden; }
+.thinking-block.collapsed .thinking-text { display: none; }
+.thinking-label { animation: pulse 2s infinite; }
+.thinking-label.done { animation: none; }
+
+/* Markdown in messages */
+.md-content h1 { font-size: 20px; color: var(--gold); margin: 20px 0 10px; font-weight: 600; }
+.md-content h2 { font-size: 17px; color: var(--gold-light); margin: 16px 0 8px; font-weight: 600; }
+.md-content h3 { font-size: 15px; color: var(--text-primary); margin: 12px 0 6px; font-weight: 600; }
+.md-content p { margin: 6px 0; }
+.md-content ul, .md-content ol { padding-left: 22px; margin: 6px 0; }
+.md-content li { margin: 3px 0; }
+.md-content strong { color: var(--gold); }
+.md-content em { color: var(--text-secondary); font-style: italic; }
+.md-content code { background: var(--bg-elevated); padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+.md-content table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+.md-content th { background: var(--bg-elevated); color: var(--gold); padding: 8px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border-hover); font-size: 13px; }
+.md-content td { padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.md-content tr:hover td { background: var(--gold-glow); }
+
+/* Inline charts & report */
+.chart-card {
+  background: var(--bg-card);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+}
+.chart-card h4 { font-size: 13px; color: var(--gold); margin-bottom: 12px; font-weight: 600; }
+.chart-canvas-wrapper { position: relative; width: 100%; height: 200px; }
+.chart-canvas-wrapper canvas { width: 100%; height: 100%; }
+
+.pie-chart-container { display: flex; align-items: center; gap: 20px; }
+.pie-canvas { width: 160px; height: 160px; flex-shrink: 0; }
+.pie-legend { flex: 1; }
+.pie-legend-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; }
+.pie-legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+.export-bar {
+  display: flex; justify-content: flex-end; margin-top: 12px;
+}
+.export-btn {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: var(--bg-deep); border: none; border-radius: 6px;
+  padding: 7px 18px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: var(--transition); font-family: var(--font);
+}
+.export-btn:hover { box-shadow: 0 4px 12px rgba(201,168,76,0.3); }
+
+/* Chat Input */
+.chat-input-area {
+  padding: 16px 32px 24px;
+  background: var(--bg-dark);
+}
+.chat-input-box {
+  max-width: 800px; margin: 0 auto;
+  display: flex; gap: 10px; align-items: flex-end;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  transition: var(--transition);
+}
+.chat-input-box:focus-within { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-glow); }
+.chat-input {
+  flex: 1;
+  background: transparent; border: none;
+  color: var(--text-primary);
+  font-size: 14px; font-family: var(--font);
+  resize: none; outline: none;
+  max-height: 120px; min-height: 24px;
+  line-height: 1.5;
+}
+.chat-input::placeholder { color: var(--text-muted); }
+.send-btn {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  border: none; border-radius: 8px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.send-btn:hover { transform: scale(1.05); }
+.send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+.send-btn svg { width: 16px; height: 16px; fill: var(--bg-deep); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { width: 0; border: none; }
+  .msg-inner { padding: 0 16px; }
+  .chat-input-area { padding: 12px 16px 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <button class="new-chat-btn" onclick="newChat()">
+        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        新建对话
+      </button>
+    </div>
+    <div class="sidebar-list" id="sidebarList"></div>
+    <div class="sidebar-footer">
+      <select class="model-select" id="modelSelect">
+        <option value="openai">GPT</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Main Chat -->
+  <div class="chat-main">
+    <div class="chat-header">
+      <div class="chat-header-title" id="chatTitle">Agent Advisor</div>
+      <div class="chat-header-right">
+        <div class="status-badge">
+          <span class="dot active" id="statusDot"></span>
+          <span id="statusText">已连接</span>
+        </div>
+      </div>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-area">
+      <div class="chat-input-box">
+        <textarea class="chat-input" id="chatInput" placeholder="输入消息..." rows="1"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ STATE ============
+let ws = null;
+let isStreaming = false;
+let currentStreamEl = null;
+let currentThinkingEl = null;
+let currentStreamMode = null;
+let currentStreamRaw = '';
+let sessions = [];
+let activeSessionId = null;
+let codeNameMap = {};  // index_code/etf_code -> name
+let sessionStage = 'profiling';  // profiling | allocating | done
+
+// ============ INIT ============
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadConfig();
+  connectWebSocket();
+  setupInput();
+});
+
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    const cfg = await res.json();
+    const sel = document.getElementById('modelSelect');
+    sel.innerHTML = '';
+    (cfg.providers || []).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = { openai:'GPT', deepseek:'DeepSeek', claude:'Claude' }[p] || p;
+      if (p === cfg.default_provider) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type:'switch_provider', provider: sel.value }));
+      }
+    });
+    // Load code->name map
+    if (cfg.code_name_map) codeNameMap = cfg.code_name_map;
+  } catch (e) { console.warn('Load config failed:', e); }
+}
+
+function resolveCodeName(code) {
+  return codeNameMap[code] || code;
+}
+
+// ============ WEBSOCKET ============
+function connectWebSocket() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${protocol}//${location.host}/ws/chat`);
+  ws.onopen = () => {
+    setStatus('已连接', 'active');
+    // 告诉后端当前会话状态
+    if (sessionStage === 'done') {
+      // 已完成方案，重连后跳过 profiling
+      ws.send(JSON.stringify({ type: 'resume', stage: 'done' }));
+    } else {
+      // 新会话，请求开始 profiling
+      ws.send(JSON.stringify({ type: 'init' }));
+    }
+  };
+  ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
+  ws.onclose = () => {
+    setStatus('连接断开', 'error');
+    setTimeout(connectWebSocket, 3000);
+  };
+  ws.onerror = () => setStatus('连接错误', 'error');
+}
+
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'assistant': addAIMsg(msg.content, msg.quick_options); break;
+    case 'thinking': appendThinking(msg.content); break;
+    case 'stream': appendStream(msg.content); break;
+    case 'stream_end': endStream(msg.quick_options); break;
+    case 'system': addSystemMsg(msg.content); break;
+    case 'status':
+      setStatus(msg.content, 'active');
+      if (msg.content === '方案已生成') sessionStage = 'done';
+      break;
+    case 'report_thinking': appendThinking(msg.content); break;
+    case 'report_stream': appendStream(msg.content); break;
+    case 'report_data': handleReportData(msg); break;
+    case 'report_end': handleReportEnd(); break;
+    case 'error': addSystemMsg('Error: ' + msg.content); setStatus('错误', 'error'); break;
+  }
+}
+
+// ============ SESSION MANAGEMENT ============
+function newChat() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.close();
+  }
+  const container = document.getElementById('chatMessages');
+  container.innerHTML = '';
+  currentStreamEl = null;
+  currentThinkingEl = null;
+  currentStreamMode = null;
+  currentStreamRaw = '';
+  isStreaming = false;
+  sessionStage = 'profiling';  // 重置阶段
+  reportRaw = '';
+  reportAllocation = null;
+  reportCharts = null;
+
+  const sid = 'chat_' + Date.now();
+  sessions.unshift({ id: sid, title: '新对话', time: new Date() });
+  activeSessionId = sid;
+  renderSidebar();
+  connectWebSocket();
+}
+
+function renderSidebar() {
+  const list = document.getElementById('sidebarList');
+  list.innerHTML = '';
+  sessions.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'chat-item' + (s.id === activeSessionId ? ' active' : '');
+    div.innerHTML = `<span class="dot"></span><span style="overflow:hidden;text-overflow:ellipsis">${escapeHtml(s.title)}</span>`;
+    div.onclick = () => {
+      // For now, just highlight; full session restore not implemented
+      activeSessionId = s.id;
+      renderSidebar();
+    };
+    list.appendChild(div);
+  });
+}
+
+// Create initial session
+sessions.push({ id: 'chat_init', title: '新对话', time: new Date() });
+activeSessionId = 'chat_init';
+renderSidebar();
+
+// ============ MSG HELPERS ============
+function addAIMsg(text, quickOptions) {
+  const wrap = _createMsgWrap('ai');
+  const contentDiv = wrap.querySelector('.content');
+  contentDiv.innerHTML = `<div class="md-content">${renderMd(text)}</div>`;
+  if (quickOptions && quickOptions.length) {
+    contentDiv.innerHTML += renderQuickOpts(quickOptions);
+  }
+  _appendMsg(wrap);
+}
+
+function addUserMsg(text) {
+  const wrap = _createMsgWrap('user');
+  wrap.querySelector('.content').textContent = text;
+  _appendMsg(wrap);
+  // Update session title from first user message
+  if (sessions.length && sessions.find(s => s.id === activeSessionId)) {
+    const s = sessions.find(s => s.id === activeSessionId);
+    if (s.title === '新对话') { s.title = text.substring(0, 20); renderSidebar(); }
+  }
+}
+
+function addSystemMsg(text) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.style.cssText = 'text-align:center;color:var(--text-muted);font-size:12px;padding:12px 0;';
+  div.textContent = text;
+  container.appendChild(div);
+  scrollChat();
+}
+
+function _createMsgWrap(role) {
+  const div = document.createElement('div');
+  div.className = `msg msg-${role}`;
+  const avatarText = role === 'ai' ? 'A' : 'U';
+  div.innerHTML = `<div class="msg-inner"><div class="avatar">${avatarText}</div><div class="content"></div></div>`;
+  return div;
+}
+
+function _appendMsg(wrap) {
+  document.getElementById('chatMessages').appendChild(wrap);
+  scrollChat();
+}
+
+// ============ STREAMING ============
+function _ensureStream() {
+  if (!currentStreamEl) {
+    const wrap = _createMsgWrap('ai');
+    const contentDiv = wrap.querySelector('.content');
+    contentDiv.classList.add('stream-container');
+    contentDiv.innerHTML = '<div class="md-content stream-content"></div>';
+    _appendMsg(wrap);
+    currentStreamEl = contentDiv.querySelector('.stream-content');
+    currentThinkingEl = null;
+    currentStreamMode = null;
+    currentStreamRaw = '';
+    isStreaming = true;
+  }
+}
+
+function appendThinking(text) {
+  _ensureStream();
+  if (!currentThinkingEl) {
+    const container = currentStreamEl.parentElement;
+    const thinkDiv = document.createElement('div');
+    thinkDiv.className = 'thinking-block';
+    thinkDiv.innerHTML = `<div class="thinking-header" onclick="toggleThink(this)"><span class="arrow">▼</span><span class="thinking-label">思考中...</span></div><div class="thinking-text"></div>`;
+    container.insertBefore(thinkDiv, currentStreamEl);
+    currentThinkingEl = thinkDiv.querySelector('.thinking-text');
+    currentStreamMode = 'thinking';
+  }
+  currentThinkingEl.textContent += text;
+  currentThinkingEl.parentElement.scrollTop = currentThinkingEl.parentElement.scrollHeight;
+  scrollChat();
+}
+
+function appendStream(text) {
+  _ensureStream();
+  if (currentStreamMode === 'thinking' && currentThinkingEl) {
+    const label = currentThinkingEl.parentElement.querySelector('.thinking-label');
+    if (label) { label.textContent = '思考过程'; label.classList.add('done'); }
+  }
+  currentStreamMode = 'content';
+  currentStreamRaw += text;
+  currentStreamEl.innerHTML = renderMd(currentStreamRaw);
+  scrollChat();
+}
+
+function endStream(quickOptions) {
+  if (currentThinkingEl) {
+    const block = currentThinkingEl.parentElement;
+    const label = block.querySelector('.thinking-label');
+    if (label) { label.textContent = '思考过程'; label.classList.add('done'); }
+    block.classList.add('collapsed');
+    const arrow = block.querySelector('.arrow');
+    if (arrow) arrow.classList.add('collapsed');
+  }
+  if (currentStreamEl && quickOptions && quickOptions.length) {
+    const container = currentStreamEl.parentElement;
+    container.insertAdjacentHTML('beforeend', renderQuickOpts(quickOptions));
+  }
+  currentStreamEl = null;
+  currentThinkingEl = null;
+  currentStreamMode = null;
+  currentStreamRaw = '';
+  isStreaming = false;
+  scrollChat();
+}
+
+function toggleThink(header) {
+  const block = header.parentElement;
+  block.classList.toggle('collapsed');
+  header.querySelector('.arrow').classList.toggle('collapsed');
+}
+
+// ============ REPORT INLINE ============
+let reportRaw = '';
+let reportAllocation = null;
+let reportCharts = null;
+
+function handleReportData(msg) {
+  // 保存报告数据供 PDF 导出使用
+  reportAllocation = msg.allocation || null;
+  reportCharts = msg.charts || null;
+
+  // Render charts inline in the current stream container or new message
+  const alloc = msg.allocation;
+  const charts = msg.charts;
+  if (!charts && !alloc) return;
+
+  // Insert charts after current content
+  const target = currentStreamEl ? currentStreamEl.parentElement : null;
+  if (!target) return;
+
+  // Pie chart
+  if (charts.pie && charts.pie.length) {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.innerHTML = '<h4>资产配比总览</h4><div class="pie-chart-container"><canvas class="pie-canvas" width="320" height="320"></canvas><div class="pie-legend"></div></div>';
+    target.appendChild(card);
+    drawPieChart(card.querySelector('canvas'), charts.pie, card.querySelector('.pie-legend'));
+  }
+
+  // PE trends
+  if (charts.pe_trends) {
+    for (const [code, data] of Object.entries(charts.pe_trends)) {
+      if (!data || !data.length) continue;
+      const name = resolveCodeName(code);
+      const card = document.createElement('div');
+      card.className = 'chart-card';
+      card.innerHTML = `<h4>PE走势 - ${escapeHtml(name)}（${code}）</h4><div class="chart-canvas-wrapper"><canvas width="800" height="300"></canvas></div>`;
+      target.appendChild(card);
+      const peCol = Object.keys(data[0]).find(k => k.toLowerCase().includes('pe') || k.includes('市盈率'));
+      const dateCol = Object.keys(data[0]).find(k => k.toLowerCase().includes('date') || k.includes('日期'));
+      if (peCol && dateCol) {
+        drawLineChart(card.querySelector('canvas'), data.map(d => d[dateCol]), data.map(d => parseFloat(d[peCol]) || 0), 'PE', '#C9A84C');
+      }
+    }
+  }
+
+  // Price trends
+  if (charts.price_trends) {
+    for (const [code, data] of Object.entries(charts.price_trends)) {
+      if (!data || !data.length) continue;
+      const name = resolveCodeName(code);
+      const card = document.createElement('div');
+      card.className = 'chart-card';
+      card.innerHTML = `<h4>价格走势 - ${escapeHtml(name)}（${code}）</h4><div class="chart-canvas-wrapper"><canvas width="800" height="300"></canvas></div>`;
+      target.appendChild(card);
+      const dates = data.map(d => d.date || d['日期'] || '');
+      const values = data.map(d => parseFloat(d.close || d['收盘'] || 0));
+      drawLineChart(card.querySelector('canvas'), dates, values, '收盘价', '#D4B86A');
+    }
+  }
+
+  scrollChat();
+}
+
+function handleReportEnd() {
+  // Save report text before endStream clears it
+  reportRaw = currentStreamRaw || '';
+  // Add export button at end
+  if (currentStreamEl) {
+    const container = currentStreamEl.parentElement;
+    const bar = document.createElement('div');
+    bar.className = 'export-bar';
+    bar.innerHTML = '<button class="export-btn" onclick="exportReport()">导出报告</button>';
+    container.appendChild(bar);
+  }
+  endStream([]);
+  setStatus('方案已生成', '');
+}
+
+function exportReport() {
+  // 使用保存的原始 Markdown 内容
+  const reportContent = reportRaw;
+  if (!reportContent) {
+    alert('没有可导出的报告内容');
+    return;
+  }
+
+  // 显示导出中状态
+  const btn = document.querySelector('.export-btn');
+  if (btn) { btn.textContent = '导出中...'; btn.disabled = true; }
+
+  // 发送原始 Markdown + 结构化数据到后端生成 PDF
+  fetch('/api/export/pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content: reportContent,
+      title: '投资顾问报告',
+      allocation: reportAllocation,
+      charts: reportCharts
+    })
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('PDF 导出失败');
+    return response.blob();
+  })
+  .then(blob => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `agent_advisor_report_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  })
+  .catch(error => {
+    console.error('PDF 导出错误:', error);
+    alert('PDF 导出失败，请稍后重试');
+  })
+  .finally(() => {
+    if (btn) { btn.textContent = '导出报告'; btn.disabled = false; }
+  });
+}
+
+// ============ CANVAS CHARTS ============
+const PIE_COLORS = ['#C9A84C','#A07C30','#D4B86A','#8B7228','#E6C96E','#7A6520','#BFA040','#9E8538','#D6BA55','#6B5818'];
+
+function drawPieChart(canvas, data, legendEl) {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 320 * dpr; canvas.height = 320 * dpr;
+  canvas.style.width = '160px'; canvas.style.height = '160px';
+  ctx.scale(dpr, dpr);
+  const cx = 80, cy = 80, r = 70;
+  const total = data.reduce((s,d) => s + d.value, 0);
+  let startAngle = -Math.PI / 2;
+  legendEl.innerHTML = '';
+  data.forEach((item, i) => {
+    const sliceAngle = (item.value / total) * 2 * Math.PI;
+    const color = PIE_COLORS[i % PIE_COLORS.length];
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,startAngle,startAngle+sliceAngle);
+    ctx.fillStyle = color; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+r*Math.cos(startAngle), cy+r*Math.sin(startAngle));
+    ctx.strokeStyle = '#0A0A0A'; ctx.lineWidth = 1.5; ctx.stroke();
+    startAngle += sliceAngle;
+    const li = document.createElement('div');
+    li.className = 'pie-legend-item';
+    li.innerHTML = `<span class="pie-legend-dot" style="background:${color}"></span><span>${item.name} ${item.value.toFixed(1)}%</span>`;
+    legendEl.appendChild(li);
+  });
+  ctx.beginPath(); ctx.arc(cx,cy,r*0.48,0,Math.PI*2);
+  ctx.fillStyle = '#141414'; ctx.fill();
+}
+
+function drawLineChart(canvas, labels, data, label, color) {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = 800, h = 300;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  canvas.style.width = '100%'; canvas.style.height = '200px';
+  ctx.scale(dpr, dpr);
+  const pad = { top:20, right:20, bottom:30, left:55 };
+  const cw = w-pad.left-pad.right, ch = h-pad.top-pad.bottom;
+  const valid = data.filter(v => !isNaN(v) && isFinite(v));
+  if (!valid.length) return;
+  const minV = Math.min(...valid), maxV = Math.max(...valid);
+  const range = maxV - minV || 1;
+  ctx.strokeStyle = 'rgba(201,168,76,0.08)'; ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (ch/4)*i;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(w-pad.right,y); ctx.stroke();
+    ctx.fillStyle = '#666'; ctx.font = '11px Inter'; ctx.textAlign = 'right';
+    ctx.fillText((maxV - (range/4)*i).toFixed(1), pad.left-8, y+4);
+  }
+  ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
+  let first = true;
+  data.forEach((v,i) => {
+    if (isNaN(v) || !isFinite(v)) return;
+    const x = pad.left + (i/(data.length-1))*cw;
+    const y = pad.top + (1-(v-minV)/range)*ch;
+    if (first) { ctx.moveTo(x,y); first = false; } else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  const lastX = pad.left + cw;
+  ctx.lineTo(lastX, pad.top+ch); ctx.lineTo(pad.left, pad.top+ch); ctx.closePath();
+  const grad = ctx.createLinearGradient(0,pad.top,0,pad.top+ch);
+  grad.addColorStop(0, 'rgba(201,168,76,0.12)'); grad.addColorStop(1, 'rgba(201,168,76,0)');
+  ctx.fillStyle = grad; ctx.fill();
+  // X labels
+  ctx.fillStyle = '#666'; ctx.font = '10px Inter'; ctx.textAlign = 'center';
+  if (labels.length > 0) {
+    [0, Math.floor(labels.length/4), Math.floor(labels.length/2), Math.floor(labels.length*3/4), labels.length-1].forEach(idx => {
+      if (idx < labels.length) {
+        const x = pad.left + (idx/(data.length-1))*cw;
+        let lbl = String(labels[idx]); if (lbl.length>10) lbl=lbl.substring(0,10);
+        ctx.fillText(lbl, x, h-8);
+      }
+    });
+  }
+}
+
+// ============ SEND ============
+function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN || isStreaming) return;
+  addUserMsg(text);
+  ws.send(JSON.stringify({ type:'chat', content: text }));
+  input.value = '';
+  input.style.height = 'auto';
+}
+
+function setupInput() {
+  const input = document.getElementById('chatInput');
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+}
+
+function selectOption(text) {
+  document.getElementById('chatInput').value = text;
+  sendMessage();
+}
+
+// ============ UTILS ============
+function scrollChat() {
+  const el = document.getElementById('chatMessages');
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStatus(text, state) {
+  document.getElementById('statusText').textContent = text;
+  const dot = document.getElementById('statusDot');
+  dot.className = 'dot';
+  if (state === 'active') dot.classList.add('active');
+  else if (state === 'error') dot.style.background = 'var(--red)';
+}
+
+function escapeHtml(t) {
+  if (!t) return '';
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escapeAttr(t) {
+  return String(t).replace(/'/g,"\\'").replace(/"/g,'&quot;');
+}
+
+function renderQuickOpts(options) {
+  return `<div class="quick-options">${options.map(o => `<button class="quick-btn" onclick="selectOption('${escapeAttr(o)}')">${escapeHtml(o)}</button>`).join('')}</div>`;
+}
+
+function renderMd(text) {
+  if (!text) return '';
+
+  // Normalize line endings
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // Parse tables first (before other transforms corrupt pipe chars)
+  // Strategy: split into lines, detect table blocks, render them separately
+  const lines = text.split('\n');
+  const blocks = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    // Detect table: a header row with |, followed by a separator row like |---|---|
+    if (i + 1 < lines.length
+        && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')
+        && lines[i+1].trim().startsWith('|') && /^[\s|:\-]+$/.test(lines[i+1].trim())) {
+      // Found a table
+      const headerLine = lines[i];
+      i += 2; // skip header + separator
+      const bodyLines = [];
+      while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().includes('|')) {
+        // Make sure it's not another separator or empty
+        if (/^[\s|:\-]+$/.test(lines[i].trim())) { i++; continue; }
+        bodyLines.push(lines[i]);
+        i++;
+      }
+      const ths = headerLine.split('|').filter(s => s.trim()).map(s => `<th>${s.trim()}</th>`).join('');
+      const rows = bodyLines.map(row => {
+        const tds = row.split('|').filter(s => s.trim()).map(s => `<td>${s.trim()}</td>`).join('');
+        return `<tr>${tds}</tr>`;
+      }).join('');
+      blocks.push(`<table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>`);
+    } else {
+      blocks.push(lines[i]);
+      i++;
+    }
+  }
+
+  let html = blocks.join('\n');
+
+  // Inline formatting
+  html = html
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+  // Group consecutive <li> into <ul>
+  html = html.replace(/((?:<li>.+<\/li>\n?)+)/g, '<ul>$1</ul>');
+
+  // Wrap remaining plain lines in <p>
+  html = html.split('\n').map(line => {
+    if (line.match(/^<[hultro]/)) return line;
+    if (line.trim() === '') return '';
+    return `<p>${line}</p>`;
+  }).join('\n');
+
+  return html;
+}
+</script>
+</body>
+</html>

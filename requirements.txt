@@ -1,0 +1,11 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+websockets==12.0
+akshare>=1.14.0
+apscheduler==3.10.4
+pyyaml==6.0.2
+requests>=2.31.0
+pandas>=2.1.0
+numpy>=1.26.0
+markdown>=3.5.0
+fpdf2>=2.7.0
